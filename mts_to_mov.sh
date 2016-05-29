@@ -1,17 +1,16 @@
 #!/bin/bash
 set -e
-if [[ $# -ne 2 ]] ; then
-	echo a search path and an output file is required
-	exit 1
-elif [[ ! -d $1 ]] ; then
-	echo the first parameter should be an existing directory to look in
-	exit 1
-elif [[ ${2##*.} != mov || -e $2 ]] ; then
-	echo the second parameter should have the extension .mov
-	echo and should not already exist
+description='
+	Two parameters are required: The first is the search path
+	for where the script should search for mts files.
+	Subdirectories will be searched as well.
+	The second parameter is the output file, which should
+	have a .mov extension, and not already exist.
+'
+if [[ $# -ne 2 || ( ! -d $1 ) || ${2##*.} != mov || -e $2 ]] ; then
+	echo "$description"
 	exit 1
 fi
-
 nice -n 19 ffmpeg \
 	-safe 0 \
 	-f concat \

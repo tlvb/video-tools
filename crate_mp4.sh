@@ -1,39 +1,74 @@
 #!/bin/bash
 set -e
-video_in=$1
-audio_in=$2
-film_out=$3
-shift 3
-if [[ ${video_in##*.} != 264 || ! -f $video_in ]] ; then
-	echo an existing .264 video file is required as first argument
-	exit 1
-elif [[ ${audio_in##*.} != wav || ! -f $audio_in ]] ; then
-	echo an existing .wav audio file is required as second argument
-	exit 1
-elif [[ ${film_out##*.} != mp4 || -e $film_out ]] ; then
-	echo a .mp4 file name is required as third argument
-	echo and the file should not already exist
-	exit 1
-fi
+description='
+	Requires three files: one .264 video file (input), one .wav
+	(input), and one .mp4 (output). If only supplied with one
+	name (with none of the extensions, say "xyz") it will assume
+	that all files are based on that name (that is, "xyz.264",
+	"xyz.wav", and "xyz.mp4").
 
-a=($@)
-for (( i=0; i<$# ; i+=2 )) ; do
-	case ${a[$i]} in
+	It is also possible supply chapter data with -c chapter_file
+	and/or tag (meta) data with -t tag_file
+
+	The input files (which need to exist) will be combined into
+	the output file (which needs to not exist)
+
+	CHAPTER FILE FORMAT:
+		MP4Box documentation is authorative, but one accepted
+		format is for each line, a timestamp, followed by the
+		name of the chapter:
+
+		hh.mm.ss:ms chapter 1 name
+		hh.mm.ss:ms chapter 2 name
+		...
+
+	TAG FILE FORMAT:
+		The tag file format is one tag=value pair per line,
+		the value should be put in quotes if it contains
+		spaces or any other funny characters.
+		Valid tags are, from MP4Box -tag-list:
+
+'$(MP4Box -tag-list|& sed -n '2,${s/^/\t/;p}')
+while [[ -n "$*" ]] ; do
+	case $1 in
 		-t)
 			tagopt=-itags
-			tagdata=$(sed ':a N;s/\n/:/g;ta' ${a[$i+1]})
+			tagdata=$(sed ':a N;s/\n/:/g;ta' "$2")
+			shift
 			;;
 		-c)
 			chapopt=-chap
-			chapfile=${a[$i+1]}
+			chapfile="$2"
+			shift
+			;;
+		*.264)
+			video_in="$1"
+			;;
+		*.wav)
+			audio_in="$1"
+			;;
+		*.mp4)
+			film_out="$1"
 			;;
 		*)
-			echo unknown option ${a[$i]}
-			exit 1
+			video_in="${video_in:-$1.264}"
+			audio_in="${audio_in:-$1.wav}"
+			film_out="${film_out:-$1.mp4}"
 			;;
 	esac
+	shift
 done
-
+if	[[ -z $video_in || -z $audio_in || -z $film_out ||
+	( ! -f $video_in ) || ( ! -f $audio_in ) || ( -e $film_out ) ]] ;
+then
+	echo "$description"
+	exit 1
+fi
+echo using video file $video_in
+echo using audio file $audio_in
+[[ -n $tagopt ]] && echo using metadata tag string $tagdata
+[[ -n $chapopt ]] && echo using chapter file $chapfile
+echo writing output film to $film_out
 tmpdir=$(mktemp -d /tmp/crate_mp4.XXXXXX)
 faac -o $tmpdir/converted.aac "$audio_in"
 MP4Box -r 25 \
