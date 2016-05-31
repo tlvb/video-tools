@@ -18,8 +18,8 @@ description='
 		format is for each line, a timestamp, followed by the
 		name of the chapter:
 
-		hh.mm.ss:ms chapter 1 name
-		hh.mm.ss:ms chapter 2 name
+		hh:mm:ss:ms chapter foo name
+		hh:mm:ss:ms chapter bar name
 		...
 
 	TAG FILE FORMAT:
